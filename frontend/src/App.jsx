@@ -342,7 +342,7 @@ export default function App() {
               NOSOTROS
             </a>
             <a
-              href="#contacto"
+              href="https://wa.me/1159743064"
               onClick={() => setMenuAbierto(false)}
               className="mt-2 bg-inmo-red border border-inmo-red hover:bg-opacity-90 text-white py-2.5 rounded-lg font-medium tracking-widest block transition-all shadow-sm"
             >
