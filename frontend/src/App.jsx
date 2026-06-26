@@ -275,7 +275,7 @@ export default function App() {
               Nosotros
             </a>
             <a
-              href="#contacto"
+              href="https://wa.me/1159743064"
               className="border border-inmo-red bg-inmo-red/10 hover:bg-inmo-red px-3 py-1.5 rounded-lg text-white font-medium transition-all"
             >
               Tasaciones
