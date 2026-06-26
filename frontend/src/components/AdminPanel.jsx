@@ -27,7 +27,7 @@ export default function AdminPanel() {
   });
   const [loginError, setLoginError] = useState("");
 
-  const API_URL = "https://inmobiliaria-mock.onrender.com"; // Cambiar por la IP de DonWeb en producción
+  const API_URL = "https://inmobiliaria-mock.onrender.com/api"; // Cambiar por la IP de DonWeb en producción
 
   const cargarPropiedades = async () => {
     if (!token) return;
