@@ -1,29 +1,129 @@
 const express = require("express");
 const cors = require("cors");
-const sqlite3 = require("sqlite3").verbose();
+const fs = require("fs");
 const path = require("path");
 
 const app = express();
 
+// Configuración de límites para soportar las imágenes en Base64
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// --- ENDPOINT DE AUTENTICACIÓN SEGURO ---
+// Ruta del archivo que actuará como nuestra Base de Datos
+const dbPath = path.resolve(__dirname, "database.json");
+
+// Inicializar el archivo JSON con un array vacío si no existe
+if (!fs.existsSync(dbPath)) {
+  fs.writeFileSync(dbPath, JSON.stringify([], null, 2));
+}
+
+// Funciones auxiliares para leer y escribir de forma síncrona y ultra veloz
+const leerPropiedades = () => {
+  const fileData = fs.readFileSync(dbPath, "utf8");
+  return JSON.parse(fileData);
+};
+
+const guardarPropiedades = (datos) => {
+  fs.writeFileSync(dbPath, JSON.stringify(datos, null, 2));
+};
+
+// --- ENDPOINTS DE LA API ---
+
+// 1. Obtener todas las propiedades
+app.get("/api/propiedades", (req, res) => {
+  try {
+    const propiedades = leerPropiedades();
+    // Las ordenamos para que las últimas cargadas aparezcan primero
+    res.json(propiedades.reverse());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Agregar una propiedad
+app.post("/api/propiedades", (req, res) => {
+  try {
+    const propiedades = leerPropiedades();
+
+    // Autoincrementar ID de forma manual y segura
+    const nuevoId =
+      propiedades.length > 0
+        ? Math.max(...propiedades.map((p) => p.id)) + 1
+        : 1;
+
+    const nuevaPropiedad = {
+      id: nuevoId,
+      titulo: req.body.titulo,
+      tipo: req.body.tipo,
+      operacion: req.body.operacion,
+      precio: Number(req.body.precio),
+      moneda: req.body.moneda,
+      zona: req.body.zona,
+      hab: Number(req.body.hab || 0),
+      banos: Number(req.body.banos || 0),
+      m2: Number(req.body.m2 || 0),
+      imagenes: req.body.imagenes || [], // Al ser JSON, guardamos el array directo sin hacerle Stringify!
+      descripcion: req.body.descripcion,
+      mapa: req.body.mapa,
+    };
+
+    propiedades.push(nuevaPropiedad);
+    guardarPropiedades(propiedades);
+
+    res.json({ id: nuevoId, message: "Propiedad guardada con éxito" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 3. Modificar una propiedad
+app.put("/api/propiedades/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    const propiedades = leerPropiedades();
+    const index = propiedades.findIndex((p) => p.id === Number(id));
+
+    if (index === -1)
+      return res.status(404).json({ error: "Propiedad no encontrada" });
+
+    // Actualizamos los campos manteniendo el mismo ID
+    propiedades[index] = {
+      ...propiedades[index],
+      ...req.body,
+      id: Number(id),
+      precio: Number(req.body.precio),
+      hab: Number(req.body.hab || 0),
+      banos: Number(req.body.banos || 0),
+      m2: Number(req.body.m2 || 0),
+    };
+
+    guardarPropiedades(propiedades);
+    res.json({ message: "Propiedad actualizada con éxito" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 4. Eliminar una propiedad
+app.delete("/api/propiedades/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    const propiedades = leerPropiedades();
+    const nuevasPropiedades = propiedades.filter((p) => p.id !== Number(id));
+
+    guardarPropiedades(nuevasPropiedades);
+    res.json({ message: "Propiedad eliminada con éxito" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// 5. Autenticación del panel de control
 app.post("/api/login", (req, res) => {
   const { usuario, password } = req.body;
-
-  // Credenciales de acceso seguras (Cambiá esto por lo que quieras en la reunión)
-  const USUARIO_VALIDO = "admin";
-  const PASSWORD_VALIDO = "ituzaingo2026";
-
-  if (usuario === USUARIO_VALIDO && password === PASSWORD_VALIDO) {
-    // Generamos un token simulado seguro para el frontend
-    res.json({
-      success: true,
-      token: "inmo_secure_session_token_xyz_2026",
-      message: "Acceso concedido",
-    });
+  if (usuario === "admin" && password === "ituzaingo2026") {
+    res.json({ success: true, token: "inmo_secure_session_token_xyz_2026" });
   } else {
     res
       .status(401)
@@ -31,128 +131,7 @@ app.post("/api/login", (req, res) => {
   }
 });
 
-// Inicializar Base de Datos SQLite (Se crea el archivo automáticamente)
-const dbPath = path.resolve(__dirname, "database.sqlite");
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) console.error("Error al abrir BD:", err.message);
-  else console.log("Conectado a la base de datos SQLite.");
-});
-
-// Crear tabla de propiedades si no existe
-db.run(`
-  CREATE TABLE IF NOT EXISTS propiedades (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    titulo TEXT, tipo TEXT, operacion TEXT, precio REAL, moneda TEXT,
-    zona TEXT, hab INTEGER, banos INTEGER, m2 INTEGER,
-    imagenes TEXT, descripcion TEXT, mapa TEXT
-  )
-`);
-
-// --- ENDPOINTS API ---
-
-// 1. Obtener todas las propiedades
-app.get("/api/propiedades", (req, res) => {
-  db.all("SELECT * FROM propiedades ORDER BY id DESC", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    // Convertir el string de imágenes de vuelta a array
-    const result = rows.map((row) => ({
-      ...row,
-      imagenes: JSON.parse(row.imagenes),
-    }));
-    res.json(result);
-  });
-});
-
-// 2. Agregar una propiedad
-app.post("/api/propiedades", (req, res) => {
-  const {
-    titulo,
-    tipo,
-    operacion,
-    precio,
-    moneda,
-    zona,
-    hab,
-    banos,
-    m2,
-    imagenes,
-    descripcion,
-    mapa,
-  } = req.body;
-  const imgsString = JSON.stringify(imagenes || []);
-
-  const sql = `INSERT INTO propiedades (titulo, tipo, operacion, precio, moneda, zona, hab, banos, m2, imagenes, descripcion, mapa) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`;
-  const params = [
-    titulo,
-    tipo,
-    operacion,
-    precio,
-    moneda,
-    zona,
-    hab,
-    banos,
-    m2,
-    imgsString,
-    descripcion,
-    mapa,
-  ];
-
-  db.run(sql, params, function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    res.json({ id: this.lastID, message: "Propiedad guardada" });
-  });
-});
-
-// 3. Modificar una propiedad
-app.put("/api/propiedades/:id", (req, res) => {
-  const { id } = req.params;
-  const {
-    titulo,
-    tipo,
-    operacion,
-    precio,
-    moneda,
-    zona,
-    hab,
-    banos,
-    m2,
-    imagenes,
-    descripcion,
-    mapa,
-  } = req.body;
-  const imgsString = JSON.stringify(imagenes || []);
-
-  const sql = `UPDATE propiedades SET titulo=?, tipo=?, operacion=?, precio=?, moneda=?, zona=?, hab=?, banos=?, m2=?, imagenes=?, descripcion=?, mapa=? WHERE id=?`;
-  const params = [
-    titulo,
-    tipo,
-    operacion,
-    precio,
-    moneda,
-    zona,
-    hab,
-    banos,
-    m2,
-    imgsString,
-    descripcion,
-    mapa,
-    id,
-  ];
-
-  db.run(sql, params, function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    res.json({ message: "Propiedad actualizada" });
-  });
-});
-
-// 4. Eliminar una propiedad
-app.delete("/api/propiedades/:id", (req, res) => {
-  const { id } = req.params;
-  db.run("DELETE FROM propiedades WHERE id = ?", id, function (err) {
-    if (err) return res.status(400).json({ error: err.message });
-    res.json({ message: "Propiedad eliminada" });
-  });
-});
-
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Backend de contingencia corriendo en puerto ${PORT}`),
+);
