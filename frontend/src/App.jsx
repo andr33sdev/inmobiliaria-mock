@@ -192,7 +192,7 @@ export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [filtrosMovilAbierto, setFiltrosMovilAbierto] = useState(false);
 
-  const API_URL = "http://localhost:5000/api/propiedades";
+  const API_URL = "https://inmobiliaria-mock.onrender.com/api/propiedades";
 
   useEffect(() => {
     const obtenerPropiedadesBD = async () => {
