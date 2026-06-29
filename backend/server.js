@@ -61,6 +61,7 @@ app.post("/api/propiedades", (req, res) => {
       moneda: req.body.moneda,
       zona: req.body.zona,
       hab: Number(req.body.hab || 0),
+      cochera: Number(req.body.cochera || 0),
       banos: Number(req.body.banos || 0),
       m2: Number(req.body.m2 || 0),
       imagenes: req.body.imagenes || [], // Al ser JSON, guardamos el array directo sin hacerle Stringify!
@@ -94,6 +95,7 @@ app.put("/api/propiedades/:id", (req, res) => {
       id: Number(id),
       precio: Number(req.body.precio),
       hab: Number(req.body.hab || 0),
+      cochera: Number(req.body.cochera || 0),
       banos: Number(req.body.banos || 0),
       m2: Number(req.body.m2 || 0),
     };

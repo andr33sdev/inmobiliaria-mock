@@ -11,6 +11,7 @@ export default function AdminPanel() {
     zona: "",
     hab: "",
     banos: "",
+    cochera: "",
     m2: "",
     imagenes: [],
     descripcion: "",
@@ -303,7 +304,7 @@ export default function AdminPanel() {
               required
             />
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <input
                 type="number"
                 placeholder="Amb."
@@ -320,7 +321,14 @@ export default function AdminPanel() {
               />
               <input
                 type="number"
-                placeholder="M2"
+                placeholder="Cocheras"
+                value={form.cochera}
+                onChange={(e) => setForm({ ...form, cochera: e.target.value })}
+                className="bg-gray-50 p-2 rounded-lg border-none text-gray-800"
+              />
+              <input
+                type="number"
+                placeholder="M2 Totales"
                 value={form.m2}
                 onChange={(e) => setForm({ ...form, m2: e.target.value })}
                 className="bg-gray-50 p-2 rounded-lg border-none text-gray-800"
