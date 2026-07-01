@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --color-inmo-primary: #322462;   /* El color principal de su marca */
-  --color-inmo-red: #B42924;       /* Su rojo para "Venta" o destacados */
-  --color-inmo-yellow: #ECEA02;    /* Su amarillo para detalles o bordes */
+  --color-inmo-primary: #1e3360;   /* El color principal de su marca */
+  --color-inmo-red: #a92028;       /* Su rojo para "Venta" o destacados */
+  --color-inmo-yellow: #fbdd0b;    /* Su amarillo para detalles o bordes */
   --color-inmo-text-dark: #1e1b4b; /* Un oscuro complementario para textos legibles */
 }

@@ -323,9 +323,9 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 text-inmo-text-dark font-sans antialiased flex flex-col justify-between">
       {/* 1. ÚNICO ELEMENTO STICKY: HEADER REDUCIDO AL MÁXIMO */}
       <div className="sticky top-0 z-50 bg-inmo-primary text-white shadow-md">
-        <header className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center border-b border-white/5 relative z-50">
+        <header className="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center border-b border-white/5 relative z-50">
           <a href="/" className="flex items-center space-x-3">
-            <img src={logo} alt="Logo" className="h-12 w-auto object-contain" />
+            <img src={logo} alt="Logo" className="h-20 w-auto object-contain" />
             <div className="hidden md:block">
               <h1 className="font-light text-sm tracking-widest text-inmo-yellow uppercase leading-none">
                 Irigoitia Propiedades
@@ -409,7 +409,7 @@ export default function App() {
       {/* 2. CONTENEDOR HERO + BUSCADOR NORMAL (NO STICKY, SE VA CON EL SCROLL) */}
       {!isPaginaListado && (
         <div className="bg-inmo-primary text-white pb-10 shrink-0">
-          <section className="max-w-4xl mx-auto text-center pt-8 pb-6 px-4">
+          <section className="max-w-4xl mx-auto text-center pt-14 pb-12 px-4">
             <h2 className="text-2xl md:text-3xl font-light mb-2 tracking-wide leading-tight">
               Encontrá tu próximo hogar
             </h2>
@@ -624,7 +624,7 @@ export default function App() {
           </div>
         ) : (
           /* VISTA PORTAL EXTENDIDO (NO STICKY) */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-4">
             <div className="lg:hidden w-full">
               <button
                 onClick={() => setFiltrosMovilAbierto(true)}
