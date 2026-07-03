@@ -28,7 +28,7 @@ export default function AdminPanel() {
   });
   const [loginError, setLoginError] = useState("");
 
-  const API_URL = "https://inmobiliaria-mock.onrender.com/api"; // Cambiar por la IP de DonWeb en producción
+  const API_URL = "https://irigoitiapropiedades.com.ar/api"; // Cambiar por la IP de DonWeb en producción
 
   const cargarPropiedades = async () => {
     if (!token) return;
@@ -103,7 +103,11 @@ export default function AdminPanel() {
           base64Images.push(compressedBase64);
 
           if (base64Images.length === files.length) {
-            setForm((prev) => ({ ...prev, imagenes: base64Images }));
+            // Combinar con las imágenes que ya estaban cargadas previamente
+            setForm((prev) => ({
+              ...prev,
+              imagenes: [...prev.imagenes, ...base64Images],
+            }));
             setProcesandoImagenes(false);
           }
         };
@@ -111,6 +115,22 @@ export default function AdminPanel() {
       };
       reader.readAsDataURL(file);
     });
+    // Resetear el input para permitir volver a subir el mismo archivo si se desea
+    e.target.value = "";
+  };
+
+  // --- LOGICA DE REORDENAMIENTO Y ELIMINACIÓN DE FOTOS ---
+  const moverFoto = (index, direccion) => {
+    const nuevasFotos = [...form.imagenes];
+    const [fotoMovida] = nuevasFotos.splice(index, 1);
+    const nuevaPosicion = direccion === "subir" ? index - 1 : index + 1;
+    nuevasFotos.splice(nuevaPosicion, 0, fotoMovida);
+    setForm({ ...form, imagenes: nuevasFotos });
+  };
+
+  const eliminarFoto = (index) => {
+    const nuevasFotos = form.imagenes.filter((_, i) => i !== index);
+    setForm({ ...form, imagenes: nuevasFotos });
   };
 
   const handleSubmit = async (e) => {
@@ -140,6 +160,7 @@ export default function AdminPanel() {
       zona: "",
       hab: "",
       banos: "",
+      cochera: "",
       m2: "",
       imagenes: [],
       descripcion: "",
@@ -351,10 +372,64 @@ export default function AdminPanel() {
                   Optimizando imágenes locales...
                 </p>
               )}
+
+              {/* --- GESTOR DE ORDEN VISUAL DE IMÁGENES --- */}
               {form.imagenes.length > 0 && !procesandoImagenes && (
-                <p className="text-green-600 text-[10px] mt-1">
-                  ✓ {form.imagenes.length} fotos listas.
-                </p>
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-gray-400 text-[9px] uppercase tracking-wider font-semibold">
+                    Organizar orden de fotos (La primera es la portada)
+                  </p>
+                  <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 rounded-xl border border-gray-100">
+                    {form.imagenes.map((img, index) => (
+                      <div
+                        key={index}
+                        className="relative bg-white border border-gray-200 rounded-lg p-1 flex flex-col justify-between items-center shadow-2xs"
+                      >
+                        <img
+                          src={img}
+                          alt={`preview-${index}`}
+                          className="w-full h-10 object-cover rounded"
+                        />
+
+                        {index === 0 && (
+                          <span className="absolute top-1 left-1 bg-amber-400 text-slate-900 text-[7px] px-1 rounded font-bold uppercase tracking-2xs">
+                            Portada
+                          </span>
+                        )}
+
+                        {/* Botonera de control posicional */}
+                        <div className="flex justify-between w-full mt-1.5 px-0.5">
+                          <button
+                            type="button"
+                            disabled={index === 0}
+                            onClick={() => moverFoto(index, "subir")}
+                            className="text-[10px] text-gray-400 hover:text-slate-900 disabled:opacity-10 cursor-pointer"
+                            title="Mover hacia adelante"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => eliminarFoto(index)}
+                            className="text-[10px] text-red-400 hover:text-red-600 font-bold cursor-pointer"
+                            title="Eliminar esta foto"
+                          >
+                            ✕
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === form.imagenes.length - 1}
+                            onClick={() => moverFoto(index, "bajar")}
+                            className="text-[10px] text-gray-400 hover:text-slate-900 disabled:opacity-10 cursor-pointer"
+                            title="Mover hacia atrás"
+                          >
+                            ▼
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -403,6 +478,7 @@ export default function AdminPanel() {
                       zona: "",
                       hab: "",
                       banos: "",
+                      cochera: "",
                       m2: "",
                       imagenes: [],
                       descripcion: "",
@@ -429,13 +505,22 @@ export default function AdminPanel() {
                 key={p.id}
                 className="bg-white p-3 rounded-xl border border-gray-100 flex justify-between items-center text-xs shadow-2xs"
               >
-                <div className="max-w-[70%]">
-                  <p className="font-normal text-gray-800 truncate">
-                    {p.titulo}
-                  </p>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">
-                    {p.moneda} {p.precio.toLocaleString()} • {p.zona}
-                  </p>
+                <div className="max-w-[70%] flex items-center gap-3">
+                  {p.imagenes && p.imagenes.length > 0 && (
+                    <img
+                      src={p.imagenes[0]}
+                      alt="Mini portada"
+                      className="w-10 h-10 object-cover rounded-lg border border-gray-100 flex-shrink-0"
+                    />
+                  )}
+                  <div className="truncate">
+                    <p className="font-normal text-gray-800 truncate">
+                      {p.titulo}
+                    </p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">
+                      {p.moneda} {p.precio.toLocaleString()} • {p.zona}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex space-x-2">
                   <button

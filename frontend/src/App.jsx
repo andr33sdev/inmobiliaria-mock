@@ -174,6 +174,10 @@ export default function App() {
   const [propiedadSeleccionada, setPropiedadSeleccionada] = useState(null);
   const [zoomIndex, setZoomIndex] = useState(null);
 
+  // Estados de control para el zoom inteligente interactivo
+  const [coordenadasZoom, setCoordenadasZoom] = useState({ x: 50, y: 50 });
+  const [estaSobreImagen, setEstaSobreImagen] = useState(false);
+
   // Estados de Filtros
   const [buscarTexto, setBuscarTexto] = useState("");
   const [filtroZona, setFiltroZona] = useState("todos");
@@ -184,7 +188,7 @@ export default function App() {
     urlParams.get("operacion") || "todos",
   );
   const [filtroDormitorios, setFiltroDormitorios] = useState("todos");
-  const [filtroCochera, setFiltroCochera] = useState("todos"); // Nuevo filtro
+  const [filtroCochera, setFiltroCochera] = useState("todos");
   const [precioMaximo, setPrecioMaximo] = useState("");
   const [ordenarPor, setOrdenarPor] = useState("recientes");
   const [paginaActual, setPaginaActual] = useState(1);
@@ -192,25 +196,19 @@ export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [filtrosMovilAbierto, setFiltrosMovilAbierto] = useState(false);
 
-  const API_URL = "https://inmobiliaria-mock.onrender.com/api/propiedades";
+  const API_URL = "https://irigoitiapropiedades.com.ar/api/propiedades";
 
   useEffect(() => {
     const obtenerPropiedadesBD = async () => {
       try {
         const res = await fetch(API_URL);
-
-        // Si el servidor responde con un error (ej. 404 o 500), lanzamos la excepción
         if (!res.ok) {
           throw new Error(`Respuesta inválida del servidor: ${res.status}`);
         }
-
         const data = await res.json();
-
-        // Validación estricta: Nos aseguramos de que sea un Array real y tenga contenido
         if (Array.isArray(data) && data.length > 0) {
           setPropiedades(data);
         } else {
-          // Si la base de datos existe pero está vacía, mostramos los mocks temporales
           setPropiedades(MOCK_PROPIEDADES);
         }
       } catch (error) {
@@ -260,7 +258,6 @@ export default function App() {
       const matchDormitorios =
         filtroDormitorios === "todos" || prop.hab === Number(filtroDormitorios);
 
-      // Lógica del filtro de cocheras (Soporta 0, 1 y 2 o más)
       const matchCochera =
         filtroCochera === "todos" ||
         (filtroCochera === "2"
@@ -299,6 +296,15 @@ export default function App() {
     ordenarPor,
   ]);
 
+  const zonasConStock = [
+    ...new Set(
+      propiedades
+        .filter((p) => p.disponible !== false)
+        .map((p) => p.zona)
+        .filter(Boolean),
+    ),
+  ].sort();
+
   const propiedadesCarrusel = useMemo(() => {
     return [...propiedades].sort((a, b) => b.id - a.id).slice(0, 5);
   }, [propiedades]);
@@ -319,13 +325,21 @@ export default function App() {
     return propiedadesFiltradas.slice(inicio, inicio + ITEMS_POR_PAGINA);
   }, [propiedadesFiltradas, paginaActual]);
 
+  // Manejador del cálculo de coordenadas para el efecto lupa en la imagen del Lightbox
+  const manejarMovimientoMouseZoom = (e) => {
+    const { left, top, width, height } =
+      e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - left) / width) * 100;
+    const y = ((e.clientY - top) / height) * 100;
+    setCoordenadasZoom({ x, y });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-inmo-text-dark font-sans antialiased flex flex-col justify-between">
-      {/* 1. ÚNICO ELEMENTO STICKY: HEADER REDUCIDO AL MÁXIMO */}
       <div className="sticky top-0 z-50 bg-inmo-primary text-white shadow-md">
         <header className="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center border-b border-white/5 relative z-50">
           <a href="/" className="flex items-center space-x-3">
-            <img src={logo} alt="Logo" className="h-20 w-auto object-contain" />
+            <img src={logo} alt="Logo" className="h-16 w-auto object-contain" />
             <div className="hidden md:block">
               <h1 className="font-light text-sm tracking-widest text-inmo-yellow uppercase leading-none">
                 Irigoitia Propiedades
@@ -362,7 +376,7 @@ export default function App() {
             className="md:hidden text-gray-300 p-1 focus:outline-none"
           >
             <svg
-              className="w-5 h-5"
+              className="w-7 h-7"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -406,7 +420,6 @@ export default function App() {
         </header>
       </div>
 
-      {/* 2. CONTENEDOR HERO + BUSCADOR NORMAL (NO STICKY, SE VA CON EL SCROLL) */}
       {!isPaginaListado && (
         <div className="bg-inmo-primary text-white pb-10 shrink-0">
           <section className="max-w-4xl mx-auto text-center pt-14 pb-12 px-4">
@@ -418,7 +431,6 @@ export default function App() {
             </p>
           </section>
 
-          {/* Buscador de la Home optimizado a 3 columnas sin presupuesto */}
           <div className="max-w-4xl mx-auto px-6 hidden sm:block">
             <div className="bg-white p-4 rounded-xl shadow-md grid grid-cols-3 gap-4 border border-gray-100">
               <div>
@@ -462,7 +474,6 @@ export default function App() {
         </div>
       )}
 
-      {/* BLOQUE INFORMATIVO DE INTERMEDIO */}
       {!isPaginaListado && (
         <section className="bg-white border-b border-gray-100 py-10 px-6 shrink-0">
           <div className="max-w-4xl mx-auto text-center space-y-5">
@@ -514,10 +525,8 @@ export default function App() {
         </section>
       )}
 
-      {/* CUERPO DINÁMICO */}
       <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex-grow">
         {!isPaginaListado ? (
-          /* VISTA INICIO (NO STICKY EN LATERALES) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             <div className="lg:col-span-7 space-y-5">
               <div className="flex justify-between items-center border-b border-gray-200/60 pb-3">
@@ -592,7 +601,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Oficina (No Sticky) */}
             <div className="lg:col-span-5 hidden lg:block">
               <div className="space-y-4">
                 <h3 className="font-light text-lg text-inmo-primary border-b border-gray-200/60 pb-3">
@@ -623,7 +631,6 @@ export default function App() {
             </div>
           </div>
         ) : (
-          /* VISTA PORTAL EXTENDIDO (NO STICKY) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-4">
             <div className="lg:hidden w-full">
               <button
@@ -637,7 +644,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Sidebar Escritorio normal sin sticky */}
             <aside className="hidden lg:block lg:col-span-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-5">
               <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-inmo-primary">
@@ -686,10 +692,11 @@ export default function App() {
                   className="w-full bg-gray-50 border border-gray-100 p-2.5 rounded-xl text-xs outline-none"
                 >
                   <option value="todos">Cualquier zona</option>
-                  <option value="Norte">Ituzaingó Norte</option>
-                  <option value="Sur">Ituzaingó Sur</option>
-                  <option value="Leloir">Parque Leloir</option>
-                  <option value="Udaondo">Villa Udaondo</option>
+                  {zonasConStock.map((zona) => (
+                    <option key={zona} value={zona}>
+                      {zona}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -723,7 +730,6 @@ export default function App() {
                     <option value="4">4+</option>
                   </select>
                 </div>
-                {/* NUEVO INPUT COCHERAS EN FILTRADOR ESCRITORIO */}
                 <div>
                   <label className="block text-[10px] font-semibold uppercase text-gray-400 tracking-wider">
                     Cocheras
@@ -865,7 +871,6 @@ export default function App() {
         )}
       </div>
 
-      {/* DRAWER / MODAL RESPONSIVO MÓVIL OPTIMIZADO */}
       {filtrosMovilAbierto && (
         <div className="fixed inset-0 z-[150] flex flex-col justify-end lg:hidden animate-fadeIn">
           <div
@@ -962,7 +967,6 @@ export default function App() {
                     <option value="4">4+</option>
                   </select>
                 </div>
-                {/* NUEVO CAMPO EN MOBILE */}
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">
                     Cochera
@@ -1010,14 +1014,14 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL DETALLE PROPIEDAD */}
+      {/* 🛠️ MODAL DETALLE PROPIEDAD: AHORA ES 'max-w-7xl' Y 'max-h-[92vh]' PARA SER MUCHO MÁS GRANDE */}
       {propiedadSeleccionada && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
           <div
             className="absolute inset-0 bg-inmo-primary/30 backdrop-blur-md"
             onClick={() => setPropiedadSeleccionada(null)}
           ></div>
-          <div className="relative bg-white w-full max-w-5xl max-h-[88vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-modalIn">
+          <div className="relative bg-white w-full max-w-7xl max-h-[92vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-modalIn">
             <div className="bg-white p-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 shrink-0">
               <div className="max-w-[100%] sm:max-w-[55%]">
                 <h2 className="text-base font-normal text-gray-800 leading-tight line-clamp-1">
@@ -1070,9 +1074,10 @@ export default function App() {
             </div>
 
             <div className="overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-12 gap-6">
-              <div className="md:col-span-7 space-y-3">
+              {/* Sección de fotos del Modal ampliada a h-[420px] */}
+              <div className="md:col-span-7 space-y-4">
                 <div
-                  className="rounded-2xl overflow-hidden h-52 sm:h-64 cursor-pointer relative group shadow-2xs"
+                  className="rounded-2xl overflow-hidden h-64 sm:h-[420px] cursor-pointer relative group shadow-2xs"
                   onClick={() => setZoomIndex(0)}
                 >
                   <img
@@ -1081,12 +1086,13 @@ export default function App() {
                     alt="main"
                   />
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-light tracking-widest bg-black/20">
-                    Click para ampliar
+                    Click para abrir en pantalla completa
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                {/* Miniaturas de fotos del Modal ampliadas a h-32 */}
+                <div className="grid grid-cols-2 gap-4">
                   <div
-                    className="rounded-xl overflow-hidden h-24 cursor-pointer relative group"
+                    className="rounded-xl overflow-hidden h-24 sm:h-32 cursor-pointer relative group shadow-xs"
                     onClick={() => setZoomIndex(1)}
                   >
                     <img
@@ -1096,7 +1102,7 @@ export default function App() {
                     />
                   </div>
                   <div
-                    className="rounded-xl overflow-hidden h-24 cursor-pointer relative group"
+                    className="rounded-xl overflow-hidden h-24 sm:h-32 cursor-pointer relative group shadow-xs"
                     onClick={() => setZoomIndex(2)}
                   >
                     <img
@@ -1144,12 +1150,12 @@ export default function App() {
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-inmo-primary">
                       Detalles
                     </h4>
-                    <p className="text-xs font-light text-gray-500 leading-relaxed text-justify line-clamp-4">
+                    <p className="text-xs font-light text-gray-500 leading-relaxed text-justify line-clamp-6">
                       {propiedadSeleccionada.descripcion}
                     </p>
                   </div>
                 </div>
-                <div className="h-40 rounded-xl overflow-hidden border border-gray-200 shadow-2xs mt-2 relative">
+                <div className="h-44 rounded-xl overflow-hidden border border-gray-200 shadow-2xs mt-2 relative">
                   <iframe
                     src={`https://maps.google.com/maps?q=${encodeURIComponent(propiedadSeleccionada.mapa || propiedadSeleccionada.zona)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                     width="100%"
@@ -1166,7 +1172,7 @@ export default function App() {
         </div>
       )}
 
-      {/* LIGHTBOX */}
+      {/* 🔍 LIGHTBOX CON ZOOM INTERACTIVO INTEGRADO ("CON LA IMAGEN ABIERTA") */}
       {zoomIndex !== null && propiedadSeleccionada && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center select-none animate-fadeIn">
           <div
@@ -1211,7 +1217,9 @@ export default function App() {
               />
             </svg>
           </button>
+
           <div className="relative max-w-[90vw] max-h-[80vh] z-10 flex items-center justify-center">
+            {/* Controles táctiles transparentes exclusivos para dispositivos móviles */}
             <div
               className="absolute left-0 w-1/2 h-full z-20 cursor-w-resize sm:hidden"
               onClick={() =>
@@ -1230,15 +1238,33 @@ export default function App() {
                 )
               }
             ></div>
-            <img
-              src={propiedadSeleccionada.imagenes[zoomIndex]}
-              className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/5 animate-scaleIn"
-              alt="zoom"
-            />
+
+            {/* Contenedor del Zoom Cinemático de Alta Gama */}
+            <div
+              className="relative overflow-hidden rounded-2xl max-w-full max-h-[80vh] cursor-zoom-in border border-white/10 shadow-2xl"
+              onMouseMove={manejarMovimientoMouseZoom}
+              onMouseEnter={() => setEstaSobreImagen(true)}
+              onMouseLeave={() => setEstaSobreImagen(false)}
+            >
+              <img
+                src={propiedadSeleccionada.imagenes[zoomIndex]}
+                style={{
+                  transformOrigin: `${coordenadasZoom.x}% ${coordenadasZoom.y}%`,
+                  transform: estaSobreImagen ? "scale(2.5)" : "scale(1)",
+                  transition: estaSobreImagen
+                    ? "none"
+                    : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                }}
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl animate-scaleIn select-none pointer-events-none"
+                alt="zoom-interactivo"
+              />
+            </div>
+
             <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/50 text-[10px] font-light tracking-widest uppercase bg-white/5 px-3 py-1 rounded-full border border-white/5">
               {zoomIndex + 1} / {propiedadSeleccionada.imagenes.length}
             </div>
           </div>
+
           <button
             onClick={() =>
               setZoomIndex(

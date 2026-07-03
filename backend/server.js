@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const fs = require("fs");
-const path = require("path");
+const pool = require("./db"); // Importamos el pool de conexiones que creamos en db.js
 
 const app = express();
 
@@ -10,118 +9,128 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Ruta del archivo que actuará como nuestra Base de Datos
-const dbPath = path.resolve(__dirname, "database.json");
-
-// Inicializar el archivo JSON con un array vacío si no existe
-if (!fs.existsSync(dbPath)) {
-  fs.writeFileSync(dbPath, JSON.stringify([], null, 2));
-}
-
-// Funciones auxiliares para leer y escribir de forma síncrona y ultra veloz
-const leerPropiedades = () => {
-  const fileData = fs.readFileSync(dbPath, "utf8");
-  return JSON.parse(fileData);
-};
-
-const guardarPropiedades = (datos) => {
-  fs.writeFileSync(dbPath, JSON.stringify(datos, null, 2));
-};
-
-// --- ENDPOINTS DE LA API ---
+// --- ENDPOINTS DE LA API (AHORA CON MYSQL) ---
 
 // 1. Obtener todas las propiedades
-app.get("/api/propiedades", (req, res) => {
+app.get("/api/propiedades", async (req, res) => {
   try {
-    const propiedades = leerPropiedades();
-    // Las ordenamos para que las últimas cargadas aparezcan primero
-    res.json(propiedades.reverse());
+    // MySQL ya se encarga de ordenarlas al revés de forma nativa y eficiente con ORDER BY id DESC
+    const [rows] = await pool.query(
+      "SELECT * FROM propiedades ORDER BY id DESC",
+    );
+
+    // Como las imágenes están guardadas como texto largo plano,
+    // las volvemos a transformar en un Array de JavaScript para que React las lea bien
+    const propiedadesFormateadas = rows.map((p) => ({
+      ...p,
+      imagenes: p.imagenes ? JSON.parse(p.imagenes) : [],
+    }));
+
+    res.json(propiedadesFormateadas);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // 2. Agregar una propiedad
-app.post("/api/propiedades", (req, res) => {
+app.post("/api/propiedades", async (req, res) => {
   try {
-    const propiedades = leerPropiedades();
+    const query = `
+      INSERT INTO propiedades 
+      (titulo, tipo, operacion, precio, moneda, zona, hab, cochera, banos, m2, imagenes, descripcion, mapa) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
 
-    // Autoincrementar ID de forma manual y segura
-    const nuevoId =
-      propiedades.length > 0
-        ? Math.max(...propiedades.map((p) => p.id)) + 1
-        : 1;
+    // Pasamos el array de imágenes a texto plano con JSON.stringify antes de insertarlo en LONGTEXT
+    const values = [
+      req.body.titulo,
+      req.body.tipo || "casa",
+      req.body.operacion || "venta",
+      Number(req.body.precio),
+      req.body.moneda || "u$s",
+      req.body.zona,
+      Number(req.body.hab || 0),
+      Number(req.body.cochera || 0),
+      Number(req.body.banos || 0),
+      Number(req.body.m2 || 0),
+      JSON.stringify(req.body.imagenes || []),
+      req.body.descripcion,
+      req.body.mapa,
+    ];
 
-    const nuevaPropiedad = {
-      id: nuevoId,
-      titulo: req.body.titulo,
-      tipo: req.body.tipo,
-      operacion: req.body.operacion,
-      precio: Number(req.body.precio),
-      moneda: req.body.moneda,
-      zona: req.body.zona,
-      hab: Number(req.body.hab || 0),
-      cochera: Number(req.body.cochera || 0),
-      banos: Number(req.body.banos || 0),
-      m2: Number(req.body.m2 || 0),
-      imagenes: req.body.imagenes || [], // Al ser JSON, guardamos el array directo sin hacerle Stringify!
-      descripcion: req.body.descripcion,
-      mapa: req.body.mapa,
-    };
+    // Ejecutamos la consulta. MySQL genera el nuevo ID de forma automática (AUTO_INCREMENT)
+    const [result] = await pool.query(query, values);
 
-    propiedades.push(nuevaPropiedad);
-    guardarPropiedades(propiedades);
-
-    res.json({ id: nuevoId, message: "Propiedad guardada con éxito" });
+    res.json({
+      id: result.insertId,
+      message: "Propiedad guardada con éxito en SQL",
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
 // 3. Modificar una propiedad
-app.put("/api/propiedades/:id", (req, res) => {
+app.put("/api/propiedades/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const propiedades = leerPropiedades();
-    const index = propiedades.findIndex((p) => p.id === Number(id));
 
-    if (index === -1)
+    const query = `
+      UPDATE propiedades SET 
+      titulo=?, tipo=?, operacion=?, precio=?, moneda=?, zona=?, 
+      hab=?, cochera=?, banos=?, m2=?, imagenes=?, descripcion=?, mapa=? 
+      WHERE id=?
+    `;
+
+    const values = [
+      req.body.titulo,
+      req.body.tipo,
+      req.body.operacion,
+      Number(req.body.precio),
+      req.body.moneda,
+      req.body.zona,
+      Number(req.body.hab || 0),
+      Number(req.body.cochera || 0),
+      Number(req.body.banos || 0),
+      Number(req.body.m2 || 0),
+      JSON.stringify(req.body.imagenes || []),
+      req.body.descripcion,
+      req.body.mapa,
+      Number(id),
+    ];
+
+    const [result] = await pool.query(query, values);
+
+    if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Propiedad no encontrada" });
+    }
 
-    // Actualizamos los campos manteniendo el mismo ID
-    propiedades[index] = {
-      ...propiedades[index],
-      ...req.body,
-      id: Number(id),
-      precio: Number(req.body.precio),
-      hab: Number(req.body.hab || 0),
-      cochera: Number(req.body.cochera || 0),
-      banos: Number(req.body.banos || 0),
-      m2: Number(req.body.m2 || 0),
-    };
-
-    guardarPropiedades(propiedades);
-    res.json({ message: "Propiedad actualizada con éxito" });
+    res.json({ message: "Propiedad actualizada con éxito en SQL" });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
 // 4. Eliminar una propiedad
-app.delete("/api/propiedades/:id", (req, res) => {
+app.delete("/api/propiedades/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const propiedades = leerPropiedades();
-    const nuevasPropiedades = propiedades.filter((p) => p.id !== Number(id));
 
-    guardarPropiedades(nuevasPropiedades);
-    res.json({ message: "Propiedad eliminada con éxito" });
+    const [result] = await pool.query("DELETE FROM propiedades WHERE id = ?", [
+      Number(id),
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Propiedad no encontrada" });
+    }
+
+    res.json({ message: "Propiedad eliminada con éxito de SQL" });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// 5. Autenticación del panel de control
+// 5. Autenticación del panel de control (Mantiene la seguridad en memoria)
 app.post("/api/login", (req, res) => {
   const { usuario, password } = req.body;
   if (usuario === "admin" && password === "ituzaingo2026") {
@@ -135,5 +144,7 @@ app.post("/api/login", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
-  console.log(`Backend de contingencia corriendo en puerto ${PORT}`),
+  console.log(
+    `Backend profesional corriendo con motor MySQL en puerto ${PORT}`,
+  ),
 );
