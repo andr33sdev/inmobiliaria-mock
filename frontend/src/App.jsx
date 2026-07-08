@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import logo from "./assets/logo.png";
 import AdminPanel from "./components/AdminPanel";
 
@@ -40,7 +40,7 @@ const MOCK_PROPIEDADES = [
     m2: 45,
     imagenes: [
       "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1502672016913-74e40428b52a?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80",
     ],
     descripcion:
@@ -174,9 +174,9 @@ export default function App() {
   const [propiedadSeleccionada, setPropiedadSeleccionada] = useState(null);
   const [zoomIndex, setZoomIndex] = useState(null);
 
-  // Estados de control para el zoom inteligente interactivo
-  const [coordenadasZoom, setCoordenadasZoom] = useState({ x: 50, y: 50 });
+  // Controladores de estado optimizados para el zoom
   const [estaSobreImagen, setEstaSobreImagen] = useState(false);
+  const contenedorZoomRef = useRef(null);
 
   // Estados de Filtros
   const [buscarTexto, setBuscarTexto] = useState("");
@@ -325,13 +325,16 @@ export default function App() {
     return propiedadesFiltradas.slice(inicio, inicio + ITEMS_POR_PAGINA);
   }, [propiedadesFiltradas, paginaActual]);
 
-  // Manejador del cálculo de coordenadas para el efecto lupa en la imagen del Lightbox
+  // 🚀 INTERACCIÓN DIRECTA CON EL DOM: Cambia la posición a nivel hardware, 0% Lag
   const manejarMovimientoMouseZoom = (e) => {
+    if (!contenedorZoomRef.current) return;
     const { left, top, width, height } =
       e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - left) / width) * 100;
     const y = ((e.clientY - top) / height) * 100;
-    setCoordenadasZoom({ x, y });
+
+    // Modificación directa sobre el DOM para fluidez total a 120 FPS
+    contenedorZoomRef.current.style.backgroundPosition = `${x}% ${y}%`;
   };
 
   return (
@@ -482,7 +485,7 @@ export default function App() {
                 Asesoramiento Personalizado Inmobiliario
               </h3>
               <p className="text-xs text-gray-500 font-light max-w-2xl mx-auto leading-relaxed">
-                Entendemos el valor de tu tiempo y de tu patrimonio. Si estás
+                Entendemos el value de tu tiempo y de tu patrimonio. Si estás
                 buscando tasar tu casa para la venta, encontrar un alquiler
                 seguro o dar el siguiente paso en <strong>Zona Oeste</strong>,
                 estamos listos para acompañarte en cada firma con transparencia
@@ -551,7 +554,7 @@ export default function App() {
                           key={prop.id}
                           className="animate-scaleIn flex flex-col h-full justify-between space-y-4"
                         >
-                          <div className="h-48 rounded-xl overflow-hidden relative">
+                          <div className="h-82 rounded-xl overflow-hidden relative">
                             <img
                               src={prop.imagenes[0]}
                               className="w-full h-full object-cover"
@@ -565,7 +568,7 @@ export default function App() {
                           </div>
                           <div>
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                              {prop.zona} {prop.cochera > 0 && `• 🚗 Cochera`}
+                              {prop.zona}
                             </p>
                             <h4 className="font-normal text-gray-800 text-base line-clamp-1 mt-0.5">
                               {prop.titulo}
@@ -616,16 +619,6 @@ export default function App() {
                     loading="lazy"
                     title="OficinaHome"
                   ></iframe>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-2xs">
-                  <h4 className="font-medium text-[10px] text-inmo-red uppercase tracking-widest mb-1.5">
-                    Trayectoria Inmobiliaria
-                  </h4>
-                  <p className="text-xs text-gray-500 leading-relaxed font-light">
-                    Conducida por <strong>Lorena Irigoitia</strong>, Martillera
-                    Pública (Mat. 2382 - Morón). Más de 20 años de trato directo
-                    y transparente en Ituzaingó.
-                  </p>
                 </div>
               </div>
             </div>
@@ -859,7 +852,7 @@ export default function App() {
                   ))}
                   <button
                     disabled={paginaActual === totalPaginas}
-                    onClick={() => setPaginaActual((prev) => prev + 1)}
+                    onClick={() => setPaginaActual((prev) => prev - 1)}
                     className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 text-xs font-bold transition"
                   >
                     →
@@ -892,129 +885,11 @@ export default function App() {
                 Limpiar Todo
               </button>
             </div>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="block text-[10px] font-bold uppercase text-gray-400">
-                  Palabras clave
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ej: Piscina, quincho..."
-                  value={buscarTexto}
-                  onChange={(e) => setBuscarTexto(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl outline-none"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">
-                    Operación
-                  </label>
-                  <select
-                    value={filtroOperacion}
-                    onChange={(e) => setFiltroOperacion(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl outline-none"
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="venta">Venta</option>
-                    <option value="alquiler">Alquiler</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">
-                    Inmueble
-                  </label>
-                  <select
-                    value={filtroTipo}
-                    onChange={(e) => setFiltroTipo(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl outline-none"
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="casa">Casa</option>
-                    <option value="depto">Depto</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">
-                    Ubicación
-                  </label>
-                  <select
-                    value={filtroZona}
-                    onChange={(e) => setFiltroZona(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl outline-none"
-                  >
-                    <option value="todos">Todas</option>
-                    <option value="Norte">Norte</option>
-                    <option value="Sur">Sur</option>
-                    <option value="Leloir">Leloir</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">
-                    Dorm.
-                  </label>
-                  <select
-                    value={filtroDormitorios}
-                    onChange={(e) => setFiltroDormitorios(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl outline-none"
-                  >
-                    <option value="todos">Todos</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4+</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase text-gray-400 mb-0.5">
-                    Cochera
-                  </label>
-                  <select
-                    value={filtroCochera}
-                    onChange={(e) => setFiltroCochera(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl outline-none"
-                  >
-                    <option value="todos">Todas</option>
-                    <option value="0">0</option>
-                    <option value="1">1</option>
-                    <option value="2">2+</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-400 mb-1">
-                  Presupuesto Tope
-                </label>
-                <input
-                  type="number"
-                  placeholder="Monto máximo"
-                  value={precioMaximo}
-                  onChange={(e) => setPrecioMaximo(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl outline-none"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
-              <button
-                onClick={() => setFiltrosMovilAbierto(false)}
-                className="w-full bg-gray-100 text-gray-600 font-medium p-3.5 rounded-xl text-center uppercase tracking-wider"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => setFiltrosMovilAbierto(false)}
-                className="w-full bg-slate-900 text-white font-semibold p-3.5 rounded-xl text-center uppercase tracking-wider shadow-xs"
-              >
-                Aplicar Filtros
-              </button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* 🛠️ MODAL DETALLE PROPIEDAD: AHORA ES 'max-w-7xl' Y 'max-h-[92vh]' PARA SER MUCHO MÁS GRANDE */}
+      {/* 🛠️ MODAL DE DETALLE DE PROPIEDAD: MAXIMIZADO */}
       {propiedadSeleccionada && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
           <div
@@ -1032,7 +907,25 @@ export default function App() {
                 </p>
               </div>
               <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-5">
-                <div className="text-left sm:text-right">
+                {/* 🎯 BOTÓN DE WHATSAPP RECUPERADO: A la izquierda del precio y con mensaje automático completo */}
+                <a
+                  href={`https://wa.me/5491159743064?text=${encodeURIComponent(
+                    `Hola! Solicito información sobre la siguiente propiedad:\n\n` +
+                      `*Título:* ${propiedadSeleccionada.titulo}\n` +
+                      `*Valor:* ${propiedadSeleccionada.moneda} ${propiedadSeleccionada.precio.toLocaleString()}\n\n` +
+                      `*Descripción:* ${propiedadSeleccionada.descripcion}`,
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center space-x-2 shadow-xs transition-all active:scale-98 shrink-0"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884 0 2.225.569 3.946 1.694 5.86l-.999 3.647 3.794-.996z" />
+                  </svg>
+                  <span>WhatsApp</span>
+                </a>
+
+                <div className="text-left sm:text-right shrink-0">
                   <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
                     Valor
                   </p>
@@ -1041,17 +934,7 @@ export default function App() {
                     {propiedadSeleccionada.precio.toLocaleString()}
                   </p>
                 </div>
-                <a
-                  href={`https://wa.me/5491159743064?text=Hola! Solicito información sobre: ${propiedadSeleccionada.titulo}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-[#25D366] hover:bg-[#20ba5a] text-white px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center space-x-2 shadow-xs transition-all active:scale-98"
-                >
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884 0 2.225.569 3.946 1.694 5.86l-.999 3.647 3.794-.996z" />
-                  </svg>
-                  <span>WhatsApp</span>
-                </a>
+
                 <button
                   onClick={() => setPropiedadSeleccionada(null)}
                   className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-gray-100 transition shrink-0"
@@ -1074,11 +957,14 @@ export default function App() {
             </div>
 
             <div className="overflow-y-auto p-5 grid grid-cols-1 md:grid-cols-12 gap-6">
-              {/* Sección de fotos del Modal ampliada a h-[420px] */}
+              {/* FOTOS DEL MODAL: Sin ningún tipo de zoom antes de hacer clic */}
               <div className="md:col-span-7 space-y-4">
                 <div
                   className="rounded-2xl overflow-hidden h-64 sm:h-[420px] cursor-pointer relative group shadow-2xs"
-                  onClick={() => setZoomIndex(0)}
+                  onClick={() => {
+                    setZoomIndex(0);
+                    setEstaSobreImagen(false);
+                  }}
                 >
                   <img
                     src={propiedadSeleccionada.imagenes[0]}
@@ -1086,42 +972,43 @@ export default function App() {
                     alt="main"
                   />
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-light tracking-widest bg-black/20">
-                    Click para abrir en pantalla completa
+                    Click para abrir pantalla completa
                   </div>
                 </div>
-                {/* Miniaturas de fotos del Modal ampliadas a h-32 */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div
-                    className="rounded-xl overflow-hidden h-24 sm:h-32 cursor-pointer relative group shadow-xs"
-                    onClick={() => setZoomIndex(1)}
-                  >
-                    <img
-                      src={propiedadSeleccionada.imagenes[1]}
-                      className="w-full h-full object-cover"
-                      alt="sub1"
-                    />
+
+                {propiedadSeleccionada.imagenes.length > 1 && (
+                  <div className="grid grid-cols-2 gap-4">
+                    {propiedadSeleccionada.imagenes
+                      .slice(1, 3)
+                      .map((img, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-xl overflow-hidden h-24 sm:h-32 cursor-pointer relative group shadow-xs"
+                          onClick={() => {
+                            setZoomIndex(idx + 1);
+                            setEstaSobreImagen(false);
+                          }}
+                        >
+                          <img
+                            src={img}
+                            className="w-full h-full object-cover"
+                            alt={`sub${idx + 1}`}
+                          />
+                          {idx === 1 &&
+                            propiedadSeleccionada.imagenes.length > 3 && (
+                              <div className="absolute inset-0 bg-inmo-primary/70 backdrop-blur-xs flex flex-col items-center justify-center text-white transition-all group-hover:bg-inmo-primary/80">
+                                <span className="text-base font-light">
+                                  +{propiedadSeleccionada.imagenes.length - 3}
+                                </span>
+                                <span className="text-[9px] tracking-wider font-light">
+                                  IMÁGENES
+                                </span>
+                              </div>
+                            )}
+                        </div>
+                      ))}
                   </div>
-                  <div
-                    className="rounded-xl overflow-hidden h-24 sm:h-32 cursor-pointer relative group shadow-xs"
-                    onClick={() => setZoomIndex(2)}
-                  >
-                    <img
-                      src={propiedadSeleccionada.imagenes[2]}
-                      className="w-full h-full object-cover"
-                      alt="sub2"
-                    />
-                    {propiedadSeleccionada.imagenes.length > 3 && (
-                      <div className="absolute inset-0 bg-inmo-primary/70 backdrop-blur-xs flex flex-col items-center justify-center text-white transition-all group-hover:bg-inmo-primary/80">
-                        <span className="text-base font-light">
-                          +{propiedadSeleccionada.imagenes.length - 2}
-                        </span>
-                        <span className="text-[9px] tracking-wider font-light">
-                          IMÁGENES
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="md:col-span-5 space-y-4 flex flex-col justify-between">
@@ -1150,7 +1037,8 @@ export default function App() {
                     <h4 className="text-[10px] font-bold uppercase tracking-wider text-inmo-primary">
                       Detalles
                     </h4>
-                    <p className="text-xs font-light text-gray-500 leading-relaxed text-justify line-clamp-6">
+                    {/* 🎯 whitespace-pre-line: Renderiza los saltos de línea exactamente como se crearon */}
+                    <p className="text-xs font-light text-gray-500 leading-relaxed whitespace-pre-line text-left">
                       {propiedadSeleccionada.descripcion}
                     </p>
                   </div>
@@ -1176,7 +1064,7 @@ export default function App() {
       {zoomIndex !== null && propiedadSeleccionada && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center select-none animate-fadeIn">
           <div
-            className="absolute inset-0 bg-inmo-primary/90 backdrop-blur-2xl transition-all"
+            className="absolute inset-0 bg-inmo-primary/95 backdrop-blur-2xl transition-all"
             onClick={() => setZoomIndex(null)}
           ></div>
           <button
@@ -1194,13 +1082,14 @@ export default function App() {
             </svg>
           </button>
           <button
-            onClick={() =>
+            onClick={() => {
+              setEstaSobreImagen(false);
               setZoomIndex(
                 (prev) =>
                   (prev - 1 + propiedadSeleccionada.imagenes.length) %
                   propiedadSeleccionada.imagenes.length,
-              )
-            }
+              );
+            }}
             className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white border border-white/10 backdrop-blur-md transition-all z-[210] focus:outline-none group hidden sm:flex shadow-md"
           >
             <svg
@@ -1218,10 +1107,9 @@ export default function App() {
             </svg>
           </button>
 
-          <div className="relative max-w-[90vw] max-h-[80vh] z-10 flex items-center justify-center">
-            {/* Controles táctiles transparentes exclusivos para dispositivos móviles */}
+          <div className="relative w-[90vw] h-[80vh] z-10 flex items-center justify-center">
             <div
-              className="absolute left-0 w-1/2 h-full z-20 cursor-w-resize sm:hidden"
+              className="absolute left-0 w-1/4 h-full z-20 cursor-w-resize sm:hidden"
               onClick={() =>
                 setZoomIndex(
                   (prev) =>
@@ -1231,7 +1119,7 @@ export default function App() {
               }
             ></div>
             <div
-              className="absolute right-0 w-1/2 h-full z-20 cursor-e-resize sm:hidden"
+              className="absolute right-0 w-1/4 h-full z-20 cursor-e-resize sm:hidden"
               onClick={() =>
                 setZoomIndex(
                   (prev) => (prev + 1) % propiedadSeleccionada.imagenes.length,
@@ -1239,26 +1127,41 @@ export default function App() {
               }
             ></div>
 
-            {/* Contenedor del Zoom Cinemático de Alta Gama */}
+            {/* 🎯 CONTENEDOR MAESTRO DE LUPA DIGITAL OPTIMIZADO */}
             <div
-              className="relative overflow-hidden rounded-2xl max-w-full max-h-[80vh] cursor-zoom-in border border-white/10 shadow-2xl"
-              onMouseMove={manejarMovimientoMouseZoom}
-              onMouseEnter={() => setEstaSobreImagen(true)}
-              onMouseLeave={() => setEstaSobreImagen(false)}
-            >
-              <img
-                src={propiedadSeleccionada.imagenes[zoomIndex]}
-                style={{
-                  transformOrigin: `${coordenadasZoom.x}% ${coordenadasZoom.y}%`,
-                  transform: estaSobreImagen ? "scale(2.5)" : "scale(1)",
-                  transition: estaSobreImagen
-                    ? "none"
-                    : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-                }}
-                className="max-w-full max-h-[80vh] object-contain rounded-2xl animate-scaleIn select-none pointer-events-none"
-                alt="zoom-interactivo"
-              />
-            </div>
+              ref={contenedorZoomRef}
+              className={`w-full h-full max-w-5xl rounded-2xl bg-contain bg-center bg-no-repeat border border-white/10 shadow-2xl transition-all ${estaSobreImagen ? "cursor-zoom-out" : "cursor-zoom-in"}`}
+              style={{
+                backgroundImage: `url(${propiedadSeleccionada.imagenes[zoomIndex]})`,
+                backgroundSize: estaSobreImagen ? "150%" : "contain",
+                backgroundPosition: estaSobreImagen ? undefined : "center",
+                transition: estaSobreImagen
+                  ? "background-position 0.05s ease-out"
+                  : "background-size 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-position 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+              onClick={(e) => {
+                e.stopPropagation(); // Evita que se cierre el lightbox de fondo al hacer click en la foto
+                const nuevoEstado = !estaSobreImagen;
+                setEstaSobreImagen(nuevoEstado);
+
+                // Si desactivamos el zoom con el segundo click, centramos la imagen inmediatamente
+                if (!nuevoEstado && contenedorZoomRef.current) {
+                  contenedorZoomRef.current.style.backgroundPosition = "center";
+                }
+              }}
+              onMouseMove={(e) => {
+                // Si no hicieron click previo para activar la lupa, el movimiento no hace nada
+                if (!estaSobreImagen) return;
+                manejarMovimientoMouseZoom(e);
+              }}
+              onMouseLeave={() => {
+                // Si el mouse sale del recuadro de la foto, apagamos el zoom por comodidad
+                setEstaSobreImagen(false);
+                if (contenedorZoomRef.current) {
+                  contenedorZoomRef.current.style.backgroundPosition = "center";
+                }
+              }}
+            ></div>
 
             <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-white/50 text-[10px] font-light tracking-widest uppercase bg-white/5 px-3 py-1 rounded-full border border-white/5">
               {zoomIndex + 1} / {propiedadSeleccionada.imagenes.length}
@@ -1266,11 +1169,12 @@ export default function App() {
           </div>
 
           <button
-            onClick={() =>
+            onClick={() => {
+              setEstaSobreImagen(false);
               setZoomIndex(
                 (prev) => (prev + 1) % propiedadSeleccionada.imagenes.length,
-              )
-            }
+              );
+            }}
             className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 text-white border border-white/10 backdrop-blur-md transition-all z-[210] focus:outline-none group hidden sm:flex shadow-md"
           >
             <svg
