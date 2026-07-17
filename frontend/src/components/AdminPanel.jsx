@@ -284,6 +284,7 @@ export default function AdminPanel() {
               >
                 <option value="casa">Casa</option>
                 <option value="depto">Depto</option>
+                <option value="local-galpon">Local/Galpón</option>
               </select>
               <select
                 value={form.operacion}

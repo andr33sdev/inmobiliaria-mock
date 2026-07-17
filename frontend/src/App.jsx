@@ -462,6 +462,7 @@ export default function App() {
                   <option value="todos">Todos los tipos</option>
                   <option value="casa">Casas</option>
                   <option value="depto">Departamentos</option>
+                  <option value="local-galpon">Locales/Galpones</option>
                 </select>
               </div>
               <div className="flex items-end">
@@ -1012,7 +1013,7 @@ export default function App() {
               </div>
 
               <div className="md:col-span-5 space-y-4 flex flex-col justify-between">
-                <div className="space-y-3">
+                <div className="space-y-6">
                   <div className="grid grid-cols-4 gap-2">
                     {[
                       { l: "Amb.", v: propiedadSeleccionada.hab },
@@ -1034,11 +1035,11 @@ export default function App() {
                     ))}
                   </div>
                   <div className="space-y-1">
-                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-inmo-primary">
+                    <h4 className="text-[14px] font-bold uppercase tracking-wider text-inmo-primary">
                       Detalles
                     </h4>
                     {/* 🎯 whitespace-pre-line: Renderiza los saltos de línea exactamente como se crearon */}
-                    <p className="text-xs font-light text-gray-500 leading-relaxed whitespace-pre-line text-left">
+                    <p className="text-md text-gray-500 leading-relaxed whitespace-pre-line text-left">
                       {propiedadSeleccionada.descripcion}
                     </p>
                   </div>
